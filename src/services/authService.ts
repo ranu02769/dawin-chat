@@ -1,0 +1,372 @@
+import { supabase } from '../lib/supabase';
+import { useAuthStore, type UserProfile } from '../store/authStore';
+
+export interface SignUpData {
+    email: string;
+    password: string;
+    full_name: string;
+    username: string;
+    date_of_birth: string;
+    gender: 'male' | 'female' | 'other';
+}
+
+export interface SignInData {
+    email: string;
+    password: string;
+}
+
+// Flag to prevent duplicate session checks (React StrictMode protection)
+let isCheckingSession = false;
+let hasInitialized = false;
+
+export const authService = {
+    // Sign up a new user
+    async signUp(data: SignUpData): Promise<{ success: boolean; error?: string }> {
+        try {
+            // 1. Create auth user
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+                email: data.email,
+                password: data.password,
+            });
+
+            if (authError) throw authError;
+            if (!authData.user) throw new Error('User creation failed');
+
+            // 2. Create user profile
+            const { error: profileError } = await supabase.from('users').insert({
+                id: authData.user.id,
+                email: data.email,
+                full_name: data.full_name,
+                username: data.username,
+                date_of_birth: data.date_of_birth,
+                gender: data.gender,
+            });
+
+            if (profileError) throw profileError;
+
+            return { success: true };
+        } catch (error) {
+            console.error('Sign up error:', error);
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Sign up failed'
+            };
+        }
+    },
+
+    // Sign in existing user
+    async signIn(data: SignInData): Promise<{ success: boolean; error?: string }> {
+        try {
+            const { error } = await supabase.auth.signInWithPassword({
+                email: data.email,
+                password: data.password,
+            });
+
+            if (error) throw error;
+
+            return { success: true };
+        } catch (error) {
+            console.error('Sign in error:', error);
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Sign in failed'
+            };
+        }
+    },
+
+    // Sign in with Google OAuth
+    async signInWithGoogle(): Promise<{ success: boolean; error?: string }> {
+        try {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin,
+                }
+            });
+
+            if (error) throw error;
+            return { success: true };
+        } catch (error) {
+            console.error('Google sign in error:', error);
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Google sign in failed'
+            };
+        }
+    },
+
+    // Sign out
+    async signOut(): Promise<void> {
+        await supabase.auth.signOut();
+        useAuthStore.getState().logout();
+    },
+
+    // Get current session
+    async getSession() {
+        const { data: { session } } = await supabase.auth.getSession();
+        return session;
+    },
+
+    // Get user profile
+    async getProfile(userId: string): Promise<UserProfile | null> {
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', userId)
+            .single();
+
+        if (error) {
+            console.error('Get profile error:', error);
+            return null;
+        }
+
+        return data as UserProfile;
+    },
+
+    // Get or create profile for OAuth users
+    async getOrCreateProfile(userId: string, email: string, fullName?: string): Promise<{ profile: UserProfile | null; needsSetup: boolean }> {
+        try {
+            // First try to get existing profile
+            const { data: existingProfile, error: fetchError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', userId)
+                .single();
+
+            if (existingProfile) {
+                // Check if profile needs setup (missing required fields)
+                const needsSetup = !existingProfile.username ||
+                    existingProfile.username.startsWith('user_') ||
+                    !existingProfile.date_of_birth ||
+                    !existingProfile.gender;
+                return { profile: existingProfile as UserProfile, needsSetup };
+            }
+
+            // Profile doesn't exist - this is an OAuth user, create minimal profile
+            if (fetchError && fetchError.code === 'PGRST116') {
+                // Generate unique username
+                const timestamp = Date.now().toString(36);
+                const username = `user_${userId.substring(0, 6)}_${timestamp}`;
+
+                const { data: newProfile, error: insertError } = await supabase
+                    .from('users')
+                    .insert({
+                        id: userId,
+                        email: email,
+                        full_name: fullName || email.split('@')[0],
+                        username: username,
+                        date_of_birth: null,
+                        gender: null,
+                    })
+                    .select()
+                    .single();
+
+                if (insertError) {
+                    console.error('Create profile error:', insertError);
+                    // Even if we can't create profile, still allow login - they just won't have a profile yet
+                    return { profile: null, needsSetup: true };
+                }
+
+                return { profile: newProfile as UserProfile, needsSetup: true };
+            }
+
+            // Some other error occurred
+            if (fetchError) {
+                console.error('Get profile error:', fetchError);
+            }
+
+            return { profile: null, needsSetup: false };
+        } catch (err) {
+            console.error('getOrCreateProfile exception:', err);
+            return { profile: null, needsSetup: false };
+        }
+    },
+
+    // Update user profile
+    async updateProfile(userId: string, updates: Partial<UserProfile>): Promise<boolean> {
+        const { error } = await supabase
+            .from('users')
+            .update(updates)
+            .eq('id', userId);
+
+        if (error) {
+            console.error('Update profile error:', error);
+            return false;
+        }
+
+        return true;
+    },
+
+    // Check username availability
+    async checkUsernameAvailable(username: string): Promise<boolean> {
+        const { data, error } = await supabase
+            .from('users')
+            .select('username')
+            .eq('username', username)
+            .single();
+
+        if (error && error.code === 'PGRST116') {
+            // No rows returned = username available
+            return true;
+        }
+
+        return !data;
+    },
+
+    // Reset password
+    async resetPassword(email: string): Promise<{ success: boolean; error?: string }> {
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/reset-password`,
+            });
+
+            if (error) throw error;
+
+            return { success: true };
+        } catch (error) {
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Password reset failed'
+            };
+        }
+    },
+
+    // Initialize auth state listener
+    initAuthListener() {
+        // Prevent duplicate initialization from React StrictMode
+        if (hasInitialized) {
+            console.log('[Auth] Already initialized, skipping duplicate init');
+            return { data: { subscription: { unsubscribe: () => { } } } };
+        }
+        hasInitialized = true;
+
+        // Set up the auth state change listener
+        const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('[Auth] Auth event:', event);
+            const { setUser, setProfile, setLoading, setNeedsProfileSetup } = useAuthStore.getState();
+
+            // Skip INITIAL_SESSION - we handle it in checkCurrentSession
+            if (event === 'INITIAL_SESSION') {
+                return;
+            }
+
+            if (event === 'SIGNED_OUT') {
+                setUser(null);
+                setProfile(null);
+                setNeedsProfileSetup(false);
+                setLoading(false);
+                return;
+            }
+
+            // For SIGNED_IN, TOKEN_REFRESHED - update user but let checkCurrentSession handle profile
+            if (session?.user) {
+                setUser(session.user);
+
+                // Only fetch profile if we don't already have one (for fresh logins)
+                const currentProfile = useAuthStore.getState().profile;
+                if (!currentProfile || currentProfile.id !== session.user.id) {
+                    try {
+                        const { profile, needsSetup } = await this.getOrCreateProfile(
+                            session.user.id,
+                            session.user.email || '',
+                            session.user.user_metadata?.full_name
+                        );
+                        setProfile(profile);
+                        setNeedsProfileSetup(needsSetup);
+                    } catch (err) {
+                        // Ignore AbortError from StrictMode unmounts
+                        if (err instanceof Error && err.name === 'AbortError') {
+                            console.log('[Auth] Profile fetch aborted (StrictMode)');
+                            return;
+                        }
+                        console.error('[Auth] Profile fetch error:', err);
+                    }
+                }
+                setLoading(false);
+            }
+        });
+
+        // Check current session immediately on init
+        this.checkCurrentSession();
+
+        return { data };
+    },
+
+    // Check current session on app load
+    async checkCurrentSession() {
+        // Prevent duplicate session checks from React StrictMode
+        if (isCheckingSession) {
+            console.log('[Auth] Session check already in progress, skipping');
+            return;
+        }
+        isCheckingSession = true;
+
+        console.log('[Auth] Starting session check...');
+        const { setUser, setProfile, setLoading, setNeedsProfileSetup } = useAuthStore.getState();
+
+        try {
+            const { data: { session }, error } = await supabase.auth.getSession();
+
+            // Handle AbortError gracefully (React StrictMode causes this)
+            if (error) {
+                if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+                    console.log('[Auth] Session check aborted (StrictMode), will retry');
+                    isCheckingSession = false;
+                    return;
+                }
+                console.error('[Auth] Session check error:', error);
+                setUser(null);
+                setProfile(null);
+                setNeedsProfileSetup(false);
+                setLoading(false);
+                isCheckingSession = false;
+                return;
+            }
+
+            if (session?.user) {
+                console.log('[Auth] User found:', session.user.email);
+                setUser(session.user);
+
+                try {
+                    const { profile, needsSetup } = await this.getOrCreateProfile(
+                        session.user.id,
+                        session.user.email || '',
+                        session.user.user_metadata?.full_name
+                    );
+                    setProfile(profile);
+                    setNeedsProfileSetup(needsSetup);
+                } catch (err) {
+                    // Ignore AbortError
+                    if (err instanceof Error && err.name === 'AbortError') {
+                        console.log('[Auth] Profile fetch aborted');
+                        isCheckingSession = false;
+                        return;
+                    }
+                    console.error('[Auth] Profile fetch error:', err);
+                }
+            } else {
+                console.log('[Auth] No session found');
+                setUser(null);
+                setProfile(null);
+                setNeedsProfileSetup(false);
+            }
+
+            setLoading(false);
+        } catch (error) {
+            // Handle AbortError gracefully
+            if (error instanceof Error && error.name === 'AbortError') {
+                console.log('[Auth] Session check aborted');
+                isCheckingSession = false;
+                return;
+            }
+            console.error('[Auth] Session check exception:', error);
+            setUser(null);
+            setProfile(null);
+            setNeedsProfileSetup(false);
+            setLoading(false);
+        } finally {
+            isCheckingSession = false;
+        }
+    },
+};
+
