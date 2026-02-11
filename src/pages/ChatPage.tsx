@@ -88,7 +88,9 @@ export default function ChatPage() {
         setIsSending(true);
 
         // Determine message type
-        const isEmoji = /^[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]+$/u.test(messageContent) && messageContent.length <= 8;
+        // Determine message type
+        // Simple check: if it's short and looks like an emoji, treat as emoji
+        const isEmoji = messageContent.length <= 8 && /\p{Emoji}/u.test(messageContent);
 
         await chatService.sendMessage(
             chatId,
@@ -125,6 +127,8 @@ export default function ChatPage() {
 
     const handleEmojiSelect = (emojiData: { emoji: string }) => {
         setInput((prev) => prev + emojiData.emoji);
+        // Keep focus on input after emoji selection
+        // fileInputRef.current?.focus(); 
     };
 
     // Group messages by date
