@@ -45,11 +45,27 @@ export const authService = {
             if (profileError) throw profileError;
 
             return { success: true };
-        } catch (error) {
+        } catch (error: any) {
             console.error('Sign up error:', error);
+
+            let errorMessage = 'Sign up failed';
+
+            // Handle specific Supabase errors
+            if (error?.message) {
+                if (error.message.includes('rate limit')) {
+                    errorMessage = 'Too many attempts. Please check your email for a confirmation link or wait a minute.';
+                } else if (error.message.includes('User already registered')) {
+                    errorMessage = 'Account already exists for this email. Please sign in instead.';
+                } else {
+                    errorMessage = error.message;
+                }
+            } else if (error instanceof Error) {
+                errorMessage = error.message;
+            }
+
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'Sign up failed'
+                error: errorMessage
             };
         }
     },
