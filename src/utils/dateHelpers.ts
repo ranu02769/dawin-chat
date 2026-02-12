@@ -19,7 +19,8 @@ export function formatDistanceToNow(dateString: string): string {
 }
 
 export function formatTime(dateString: string): string {
-    const date = new Date(dateString);
+    // Ensure the date string is treated as UTC if it doesn't specify a timezone
+    const date = new Date(dateString.endsWith('Z') ? dateString : `${dateString}Z`);
     return date.toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
