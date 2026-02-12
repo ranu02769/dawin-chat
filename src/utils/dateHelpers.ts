@@ -20,11 +20,10 @@ export function formatDistanceToNow(dateString: string): string {
 
 export function formatTime(dateString: string): string {
     const date = new Date(dateString);
-    return date.toLocaleTimeString('en-IN', {
+    return date.toLocaleTimeString(undefined, {
         hour: 'numeric',
         minute: '2-digit',
         hour12: true,
-        timeZone: 'Asia/Kolkata',
     });
 }
 
