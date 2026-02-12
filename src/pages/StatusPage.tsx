@@ -38,6 +38,42 @@ export default function StatusPage() {
         }
     }, [profile?.id]);
 
+    // Realtime subscription for views
+    useEffect(() => {
+        if (!profile?.id) return;
+
+        const channel = supabase
+            .channel('status_view_updates')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'status_views',
+                },
+                (payload) => {
+                    const newView = payload.new as { status_id: string; viewer_id: string };
+
+                    // Update my statuses view count
+                    setMyStatuses((current) =>
+                        current.map((status) => {
+                            if (status.id === newView.status_id) {
+                                // Prevent counting own views if filter fails (though RLS/logic should prevent it)
+                                if (newView.viewer_id === profile.id) return status;
+                                return { ...status, views_count: (status.views_count || 0) + 1 };
+                            }
+                            return status;
+                        })
+                    );
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [profile?.id]);
+
     const loadStatuses = async () => {
         if (!profile?.id) return;
         setIsLoading(true);
