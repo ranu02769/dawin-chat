@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { HiCheck, HiX } from 'react-icons/hi';
 import { authService } from '../../services/authService';
 import { useAuthStore } from '../../store/authStore';
+import DateOfBirthPicker from '../ui/DateOfBirthPicker';
 import toast from 'react-hot-toast';
 
 export default function ProfileSetupModal() {
@@ -150,18 +151,11 @@ export default function ProfileSetupModal() {
                     </div>
 
                     {/* Date of Birth */}
-                    <div>
-                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text)' }}>Date of Birth</label>
-                        <input
-                            type="date"
-                            value={formData.date_of_birth}
-                            onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
-                            className="input-field"
-                        />
-                        {errors.date_of_birth && (
-                            <p className="text-red-500 text-sm mt-1">{errors.date_of_birth}</p>
-                        )}
-                    </div>
+                    <DateOfBirthPicker
+                        value={formData.date_of_birth}
+                        onChange={(date) => setFormData({ ...formData, date_of_birth: date })}
+                        error={errors.date_of_birth}
+                    />
 
                     {/* Gender */}
                     <div>
@@ -171,8 +165,8 @@ export default function ProfileSetupModal() {
                                 <label
                                     key={option}
                                     className={`flex-1 py-2 px-4 rounded-lg border text-center cursor-pointer transition-all ${formData.gender === option
-                                            ? 'border-primary font-medium'
-                                            : ''
+                                        ? 'border-primary font-medium'
+                                        : ''
                                         }`}
                                     style={{
                                         borderColor: formData.gender === option ? 'var(--primary)' : 'var(--border)',

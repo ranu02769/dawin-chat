@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { HiEye, HiEyeOff, HiArrowLeft } from 'react-icons/hi';
+import DateOfBirthPicker from '../ui/DateOfBirthPicker';
 import type { SignUpFormData } from '../../pages/AuthPage';
 
 interface Props {
@@ -127,18 +128,11 @@ export default function SignUpStep1({ initialData, onNext, onBack }: Props) {
             </div>
 
             {/* Date of Birth */}
-            <div>
-                <label className="block text-sm font-medium mb-1">Date of Birth</label>
-                <input
-                    type="date"
-                    value={formData.date_of_birth}
-                    onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
-                    className="input-field"
-                />
-                {errors.date_of_birth && (
-                    <p className="text-red-500 text-sm mt-1">{errors.date_of_birth}</p>
-                )}
-            </div>
+            <DateOfBirthPicker
+                value={formData.date_of_birth}
+                onChange={(date) => setFormData({ ...formData, date_of_birth: date })}
+                error={errors.date_of_birth}
+            />
 
             {/* Gender */}
             <div>
