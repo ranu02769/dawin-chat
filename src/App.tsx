@@ -19,6 +19,7 @@ import ChatPage from './pages/ChatPage';
 import RandomChatPage from './pages/RandomChatPage';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import ProfilePage from './pages/ProfilePage';
 
 // Components
 import Layout from './components/layout/Layout';
@@ -114,6 +115,7 @@ function App() {
           <Route path="search" element={<SearchPage />} />
           <Route path="status" element={<StatusPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="user/:userId" element={<ProfilePage />} />
         </Route>
 
         {/* Chat Page (full screen, no nav) */}

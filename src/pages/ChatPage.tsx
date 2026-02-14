@@ -155,7 +155,10 @@ export default function ChatPage() {
                 </motion.button>
 
                 {otherUser && (
-                    <div className="flex items-center gap-3">
+                    <div
+                        className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => navigate(`/user/${otherUser.id}`)}
+                    >
                         {otherUser.dp_url ? (
                             <img
                                 src={otherUser.dp_url}

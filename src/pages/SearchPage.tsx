@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { HiSearch, HiUserCircle, HiSparkles } from 'react-icons/hi';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
-import { chatService } from '../services/chatService';
 
 interface SearchResult {
     id: string;
@@ -46,14 +45,6 @@ export default function SearchPage() {
         setIsSearching(false);
     };
 
-    const handleStartChat = async (userId: string) => {
-        if (!profile?.id) return;
-
-        const chat = await chatService.getOrCreateChat(profile.id, userId);
-        if (chat) {
-            navigate(`/chat/${chat.id}`);
-        }
-    };
 
     return (
         <div className="min-h-full">
@@ -98,7 +89,7 @@ export default function SearchPage() {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.05 }}
-                            onClick={() => handleStartChat(user.id)}
+                            onClick={() => navigate(`/user/${user.id}`)}
                             className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                         >
                             {user.dp_url ? (
