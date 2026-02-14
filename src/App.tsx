@@ -20,15 +20,15 @@ import RandomChatPage from './pages/RandomChatPage';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ProfilePage from './pages/ProfilePage';
+import CompleteProfilePage from './pages/CompleteProfilePage';
 
 // Components
 import Layout from './components/layout/Layout';
 import LoadingScreen from './components/common/LoadingScreen';
-import ProfileSetupModal from './components/auth/ProfileSetupModal';
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, needsProfileSetup } = useAuthStore();
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -38,18 +38,27 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/auth" replace />;
   }
 
+  // If user needs to complete profile, redirect them there
+  // BUT: If we are already on the complete-profile page (handled by Route), don't redirect
+  if (needsProfileSetup && window.location.pathname !== '/complete-profile') {
+    return <Navigate to="/complete-profile" replace />;
+  }
+
   return <>{children}</>;
 }
 
 // Public Route Component (redirect if authenticated)
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, needsProfileSetup } = useAuthStore();
 
   if (isLoading) {
     return <LoadingScreen />;
   }
 
   if (isAuthenticated) {
+    if (needsProfileSetup) {
+      return <Navigate to="/complete-profile" replace />;
+    }
     return <Navigate to="/" replace />;
   }
 
@@ -58,7 +67,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   const { applyTheme } = useThemeStore();
-  const { needsProfileSetup, isAuthenticated, isLoading } = useAuthStore();
+  const { isLoading } = useAuthStore();
 
   useEffect(() => {
     // Initialize auth listener
@@ -113,10 +122,9 @@ function App() {
 
                 toast.success('Login successful', { id: toastId });
 
-                // Explicitly navigate to home to ensure we leave auth page
-                // Since we can't use useNavigate here, we rely on the store update to trigger PublicRoute redirect
-                // But if that fails, a window reload is the ultimate fallback
-                // window.location.reload(); // Uncomment if issues persist
+                // Redirect based on setup
+                // We don't need explicit navigate here because store update triggers rerender
+                // and PublicRoute/ProtectedRoute logic handles it.
               }
             } catch (error) {
               console.error('Deep link error:', error);
@@ -152,11 +160,6 @@ function App() {
         }}
       />
 
-      {/* Profile Setup Modal - show when authenticated user needs to complete profile */}
-      {!isLoading && isAuthenticated && needsProfileSetup && (
-        <ProfileSetupModal />
-      )}
-
       <Routes>
         {/* Auth Routes */}
         <Route
@@ -165,6 +168,20 @@ function App() {
             <PublicRoute>
               <AuthPage />
             </PublicRoute>
+          }
+        />
+
+        {/* Profile Setup Route - Protected but accessible if setup needed */}
+        <Route
+          path="/complete-profile"
+          element={
+            isLoading ? (
+              <LoadingScreen />
+            ) : useAuthStore.getState().isAuthenticated ? (
+              <CompleteProfilePage />
+            ) : (
+              <Navigate to="/auth" replace />
+            )
           }
         />
 

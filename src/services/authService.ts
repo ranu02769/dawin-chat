@@ -313,11 +313,6 @@ export const authService = {
             console.log('[Auth] Auth event:', event);
             const { setUser, setProfile, setLoading, setNeedsProfileSetup } = useAuthStore.getState();
 
-            // Skip INITIAL_SESSION - we handle it in checkCurrentSession
-            if (event === 'INITIAL_SESSION') {
-                return;
-            }
-
             if (event === 'SIGNED_OUT') {
                 setUser(null);
                 setProfile(null);
@@ -326,7 +321,7 @@ export const authService = {
                 return;
             }
 
-            // For SIGNED_IN, TOKEN_REFRESHED - update user but let checkCurrentSession handle profile
+            // For INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED
             if (session?.user) {
                 setUser(session.user);
 
@@ -351,11 +346,11 @@ export const authService = {
                     }
                 }
                 setLoading(false);
+            } else if (event === 'INITIAL_SESSION') {
+                // INITIAL_SESSION but no user -> likely not logged in
+                setLoading(false);
             }
         });
-
-        // Check current session immediately on init
-        this.checkCurrentSession();
 
         return { data };
     },
