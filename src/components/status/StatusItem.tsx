@@ -39,7 +39,6 @@ const StatusItem = ({ status, onView, onLike, index }: StatusItemProps) => {
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0].isIntersecting && !hasViewed) {
-                    console.log('Status viewed:', status.id);
                     setHasViewed(true);
                     onView(status);
                     observer.disconnect();
