@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://dawin-chat.vercel.app/sitemap.xml
