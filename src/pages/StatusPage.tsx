@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { HiPlus, HiEye, HiTrash, HiHeart, HiOutlineHeart } from 'react-icons/hi';
+import { HiPlus, HiEye, HiTrash, HiHeart } from 'react-icons/hi';
 import EmojiPicker from 'emoji-picker-react';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
-import { getTimeRemaining, formatDistanceToNow } from '../utils/dateHelpers';
+import { getTimeRemaining } from '../utils/dateHelpers';
 import toast from 'react-hot-toast';
+import StatusItem from '../components/status/StatusItem';
 
 interface Status {
     id: string;
@@ -284,45 +285,13 @@ export default function StatusPage() {
                         {otherStatuses.length > 0 ? (
                             <div className="space-y-3">
                                 {otherStatuses.map((status, index) => (
-                                    <motion.div
+                                    <StatusItem
                                         key={status.id}
-                                        className="card cursor-pointer relative"
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: index * 0.05 }}
-                                        onClick={() => viewStatus(status)}
-                                    >
-                                        <div className="flex items-center gap-3 mb-2">
-                                            {status.user?.dp_url ? (
-                                                <img
-                                                    src={status.user.dp_url}
-                                                    alt={status.user.full_name}
-                                                    className="w-10 h-10 rounded-full object-cover status-ring"
-                                                />
-                                            ) : (
-                                                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold status-ring" style={{ backgroundColor: 'var(--primary)', color: '#000' }}>
-                                                    {status.user?.full_name?.charAt(0).toUpperCase() || 'U'}
-                                                </div>
-                                            )}
-                                            <div>
-                                                <p className="font-medium" style={{ color: 'var(--text)' }}>{status.user?.full_name}</p>
-                                                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                                                    {formatDistanceToNow(status.created_at)} ago
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <p className="text-lg mb-3" style={{ color: 'var(--text)' }}>{status.content}</p>
-
-                                        {/* Like Button */}
-                                        <button
-                                            onClick={(e) => toggleLike(status, e)}
-                                            className="flex items-center gap-1 text-sm transition-colors hover:opacity-80"
-                                            style={{ color: status.is_liked ? '#EF4444' : 'var(--text-secondary)' }}
-                                        >
-                                            {status.is_liked ? <HiHeart className="text-xl" /> : <HiOutlineHeart className="text-xl" />}
-                                            <span>{status.likes_count || 0}</span>
-                                        </button>
-                                    </motion.div>
+                                        status={status as any}
+                                        index={index}
+                                        onView={viewStatus}
+                                        onLike={toggleLike}
+                                    />
                                 ))}
                             </div>
                         ) : (
