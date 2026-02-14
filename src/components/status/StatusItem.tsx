@@ -29,7 +29,8 @@ interface StatusItemProps {
     index: number;
 }
 
-export default function StatusItem({ status, onView, onLike, index }: StatusItemProps) {
+const StatusItem = ({ status, onView, onLike, index }: StatusItemProps) => {
+    // ... rest of component
     const navigate = useNavigate();
     const statusRef = useRef<HTMLDivElement>(null);
     const [hasViewed, setHasViewed] = useState(false);
@@ -38,6 +39,7 @@ export default function StatusItem({ status, onView, onLike, index }: StatusItem
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0].isIntersecting && !hasViewed) {
+                    console.log('Status viewed:', status.id);
                     setHasViewed(true);
                     onView(status);
                     observer.disconnect();
@@ -111,4 +113,6 @@ export default function StatusItem({ status, onView, onLike, index }: StatusItem
             </button>
         </motion.div>
     );
-}
+};
+
+export default StatusItem;

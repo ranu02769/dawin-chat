@@ -181,10 +181,14 @@ export default function StatusPage() {
     const viewStatus = async (status: Status) => {
         if (!profile?.id || status.user_id === profile.id) return;
 
-        await supabase.from('status_views').upsert({
+        console.log('Sending view for status:', status.id);
+        const { error } = await supabase.from('status_views').upsert({
             status_id: status.id,
             viewer_id: profile.id,
         }, { onConflict: 'status_id,viewer_id', ignoreDuplicates: true });
+
+        if (error) console.error('Error viewing status:', error);
+        else console.log('View recorded successfully');
     };
 
     const toggleLike = async (status: Status, e: React.MouseEvent) => {
