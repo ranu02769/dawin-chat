@@ -87,6 +87,15 @@ function App() {
           handleDeepLink(data.url);
         }
       });
+
+      // Handle app state changes (background -> foreground)
+      // This ensures if user switches back manually or if redirect is subtle, we double check session
+      CapacitorApp.addListener('appStateChange', async ({ isActive }) => {
+        if (isActive) {
+          // Verify session whenever app comes to foreground
+          await authService.checkCurrentSession();
+        }
+      });
     });
 
     const handleDeepLink = async (urlString: string) => {

@@ -112,7 +112,9 @@ export const authService = {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: 'com.dawinchat.app://google-auth',
+                    redirectTo: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'https:')
+                        ? window.location.origin
+                        : 'com.dawinchat.app://google-auth',
                     skipBrowserRedirect: false,
                 }
             });
@@ -121,10 +123,7 @@ export const authService = {
             return { success: true };
         } catch (error) {
             console.error('Google sign in error:', error);
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : 'Google sign in failed'
-            };
+            return { success: false, error: (error as Error).message };
         }
     },
 
