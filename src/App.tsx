@@ -103,28 +103,14 @@ function App() {
             const toastId = toast.loading('Verifying login...');
             try {
               // Set session
-              await authService.setSession(access_token, refresh_token);
+              // This internal call will update the store, fetch profile, etc.
+              const result = await authService.setSession(access_token, refresh_token);
 
-              // Fetch updated session and profile
-              const session = await authService.getSession();
-              if (session?.user) {
-                const { needsSetup, profile } = await authService.getOrCreateProfile(
-                  session.user.id,
-                  session.user.email || '',
-                  session.user.user_metadata?.full_name
-                );
-
-                // Force update store
-                useAuthStore.getState().setUser(session.user);
-                useAuthStore.getState().setProfile(profile);
-                useAuthStore.getState().setNeedsProfileSetup(needsSetup);
-                useAuthStore.getState().setLoading(false);
-
+              if (result.success) {
                 toast.success('Login successful', { id: toastId });
-
-                // Redirect based on setup
-                // We don't need explicit navigate here because store update triggers rerender
-                // and PublicRoute/ProtectedRoute logic handles it.
+                // Store is already updated by authService.setSession -> checkCurrentSession
+              } else {
+                throw new Error(result.error);
               }
             } catch (error) {
               console.error('Deep link error:', error);
