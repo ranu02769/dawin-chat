@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { supabase } from '../lib/supabase';
 import { useAuthStore, type UserProfile } from '../store/authStore';
 
@@ -109,12 +110,17 @@ export const authService = {
     // Sign in with Google OAuth
     async signInWithGoogle(): Promise<{ success: boolean; error?: string }> {
         try {
+            // Determine redirect URL
+            // Capacitor.isNativePlatform() returns true for Android/iOS
+            // window.location.origin returns 'http://localhost' on Android which is ambiguous without this check
+            const redirectUrl = Capacitor.isNativePlatform()
+                ? 'com.dawinchat.app://google-auth'
+                : window.location.origin;
+
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'https:')
-                        ? window.location.origin
-                        : 'com.dawinchat.app://google-auth',
+                    redirectTo: redirectUrl,
                     skipBrowserRedirect: false,
                 }
             });
